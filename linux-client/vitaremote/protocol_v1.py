@@ -74,6 +74,15 @@ class VitaState:
     front_touch: bool = False
     rear_left: bool = False
     rear_right: bool = False
+    # Protocolo v2: todos os dedos na tela frontal (até 2) e o modo ativo no Vita.
+    front_points: tuple[tuple[int, int], ...] = ()
+    mode: int = 0
+
+    @property
+    def finger_count(self) -> int:
+        if self.front_points:
+            return len(self.front_points)
+        return 1 if self.front_touch else 0
 
     def pressed(self, name: str) -> bool:
         if name == "rear_left":

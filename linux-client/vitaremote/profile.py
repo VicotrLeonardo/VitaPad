@@ -76,12 +76,16 @@ class Profile:
     tap: Target | None = None
     tap_ms: int = 180
     tap_travel: int = 40
+    two_finger_scroll: bool = False  # arrastar com 2 dedos = rolar (só protocolo v2)
+    two_finger_tap: Target | None = None  # toque rápido com 2 dedos (só protocolo v2)
+    touch_scroll_sensitivity: float = 0.03  # "cliques" de rolagem por unidade de toque
     stick_mouse_speed: float = 1400.0  # pixels/s com o analógico no máximo
     scroll_speed: float = 12.0  # "cliques" de rolagem/s no máximo
 
     def needed_devices(self) -> set[str]:
         devices: set[str] = set()
-        targets = [t for t in self.buttons.values() if t] + ([self.tap] if self.tap else [])
+        targets = [t for t in self.buttons.values() if t]
+        targets += [t for t in (self.tap, self.two_finger_tap) if t]
         for stick in (self.left_stick, self.right_stick):
             if stick.kind == "pad":
                 devices.add("pad")
@@ -89,7 +93,7 @@ class Profile:
                 devices.add("mouse")
             elif stick.kind == "keys":
                 targets += [t for t in stick.keys if t]
-        if self.touch_front == "touchpad":
+        if self.touch_front == "touchpad" or self.two_finger_scroll:
             devices.add("mouse")
         devices.update(t.device for t in targets)
         return devices
@@ -167,7 +171,7 @@ def _number(table: dict, key: str, default: float, where: str, lo: float, hi: fl
 
 
 def profile_from_dict(data: dict, default_name: str = "perfil") -> Profile:
-    known = {"name", "buttons", "sticks", "touch", "mouse"}
+    known = {"name", "buttons", "sticks", "touch", "cursor"}
     unknown = set(data) - known
     if unknown:
         raise ProfileError(f"seções desconhecidas: {', '.join(sorted(unknown))}")
@@ -194,18 +198,62 @@ def profile_from_dict(data: dict, default_name: str = "perfil") -> Profile:
     profile.tap = parse_target(touch.get("tap", "none"), "touch.tap")
     profile.tap_ms = int(_number(touch, "tap_ms", profile.tap_ms, "touch", 50, 1000))
     profile.tap_travel = int(_number(touch, "tap_travel", profile.tap_travel, "touch", 0, 500))
+    two_scroll = touch.get("two_finger_scroll", False)
+    if not isinstance(two_scroll, bool):
+        raise ProfileError("touch.two_finger_scroll: use true ou false")
+    profile.two_finger_scroll = two_scroll
+    profile.two_finger_tap = parse_target(touch.get("two_finger_tap", "none"), "touch.two_finger_tap")
+    profile.touch_scroll_sensitivity = _number(
+        touch, "scroll_sensitivity", profile.touch_scroll_sensitivity, "touch", 0.001, 1)
 
-    mouse = data.get("mouse", {})
-    profile.stick_mouse_speed = _number(mouse, "stick_speed", profile.stick_mouse_speed, "mouse", 50, 20000)
-    profile.scroll_speed = _number(mouse, "scroll_speed", profile.scroll_speed, "mouse", 1, 200)
+    cursor = data.get("cursor", {})
+    profile.stick_mouse_speed = _number(cursor, "stick_speed", profile.stick_mouse_speed, "cursor", 50, 20000)
+    profile.scroll_speed = _number(cursor, "scroll_speed", profile.scroll_speed, "cursor", 1, 200)
     return profile
+
+
+MODES = ("gamepad", "mouse", "keyboard")
+
+
+@dataclass
+class ProfileSet:
+    """Um perfil por modo do Vita (protocolo v2). Perfis antigos valem para todos os modos."""
+
+    name: str
+    modes: dict[str, Profile]
+
+    def for_mode(self, mode: str) -> Profile:
+        return self.modes[mode]
+
+    def needed_devices(self) -> set[str]:
+        devices: set[str] = set()
+        for profile in self.modes.values():
+            devices |= profile.needed_devices()
+        return devices
+
+
+def profile_set_from_dict(data: dict, default_name: str = "perfil") -> ProfileSet:
+    name = str(data.get("name", default_name))
+    if not any(m in data for m in MODES):
+        single = profile_from_dict(data, default_name)
+        return ProfileSet(single.name, {m: single for m in MODES})
+    unknown = set(data) - {"name", *MODES}
+    if unknown:
+        raise ProfileError(f"seções desconhecidas: {', '.join(sorted(unknown))} (use [gamepad], [mouse], [keyboard])")
+    modes = {}
+    for mode in MODES:
+        try:
+            modes[mode] = profile_from_dict(data.get(mode, {}), f"{name} ({mode})")
+        except ProfileError as exc:
+            raise ProfileError(f"[{mode}] {exc}") from exc
+    return ProfileSet(name, modes)
 
 
 def builtin_profiles() -> list[str]:
     return sorted(p.stem for p in BUILTIN_DIR.glob("*.toml"))
 
 
-def load_profile(name_or_path: str) -> Profile:
+def _read(name_or_path: str) -> tuple[Path, dict]:
     path = Path(name_or_path)
     if not path.suffix:
         path = BUILTIN_DIR / f"{name_or_path}.toml"
@@ -218,7 +266,17 @@ def load_profile(name_or_path: str) -> Profile:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as exc:
         raise ProfileError(f"{path}: TOML inválido: {exc}") from exc
+    return path, data
+
+
+def load_profile(name_or_path: str) -> Profile:
+    """Perfil de modo único (protocolo v1). Num perfil por modos, usa o modo gamepad."""
+    return load_profile_set(name_or_path).for_mode("gamepad")
+
+
+def load_profile_set(name_or_path: str) -> ProfileSet:
+    path, data = _read(name_or_path)
     try:
-        return profile_from_dict(data, default_name=path.stem)
+        return profile_set_from_dict(data, default_name=path.stem)
     except ProfileError as exc:
         raise ProfileError(f"{path}: {exc}") from exc

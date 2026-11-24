@@ -55,6 +55,8 @@ class Mapper:
         self._touch_origin = (0, 0)
         self._touch_travel = 0.0
         self._touch_time = 0.0
+        self._max_fingers = 0
+        self._last_fingers = 0
         self._pulses: list[Target] = []
 
     # ------------------------------------------------------------------ quadro
@@ -82,7 +84,7 @@ class Mapper:
         for mode, raw_x, raw_y in sticks:
             self._stick(mode, raw_x, raw_y, dt, want, mouse, wheel)
 
-        self._touch(state, dt, mouse)
+        self._touch(state, dt, mouse, wheel)
 
         # Toques rápidos geram um clique de um quadro: pressiona agora, solta no próximo.
         for target in self._pulses:
@@ -105,6 +107,7 @@ class Mapper:
                 self.out.set_axis(name, 0)
         self._axes = {name: 0 for name in self._axes}
         self._touching = False
+        self._last_fingers = 0
         self._pulses.clear()
         self._mouse_rem = [0.0, 0.0]
         self._scroll_rem = [0.0, 0.0]
@@ -137,20 +140,34 @@ class Mapper:
             wheel[0] += -y * self.profile.scroll_speed * dt
             wheel[1] += x * self.profile.scroll_speed * dt
 
-    def _touch(self, state: VitaState, dt: float, mouse: list[float]) -> None:
+    def _touch(self, state: VitaState, dt: float, mouse: list[float], wheel: list[float]) -> None:
         pos = (state.touch_x, state.touch_y)
-        if state.front_touch:
+        fingers = state.finger_count
+        if fingers:
             if not self._touching:
                 self._touching = True
                 self._touch_origin = pos
                 self._touch_travel = 0.0
                 self._touch_time = 0.0
+                self._max_fingers = fingers
             else:
                 self._touch_time += dt
-                if self.profile.touch_front == "touchpad":
-                    sens = self.profile.touch_sensitivity
-                    mouse[0] += (pos[0] - self._last_touch[0]) * sens
-                    mouse[1] += (pos[1] - self._last_touch[1]) * sens
+                # Quando entra/sai um dedo, o "primeiro dedo" pode mudar: não usa esse delta.
+                if fingers == self._last_fingers:
+                    dx = pos[0] - self._last_touch[0]
+                    dy = pos[1] - self._last_touch[1]
+                    if fingers >= 2 and self.profile.two_finger_scroll:
+                        # Rolagem "natural": o conteúdo acompanha os dedos.
+                        k = self.profile.touch_scroll_sensitivity
+                        wheel[0] += dy * k
+                        wheel[1] += -dx * k
+                    elif fingers == 1 and self.profile.touch_front == "touchpad":
+                        sens = self.profile.touch_sensitivity
+                        mouse[0] += dx * sens
+                        mouse[1] += dy * sens
+                if fingers != self._last_fingers:
+                    self._touch_origin = pos
+            self._max_fingers = max(self._max_fingers, fingers)
             self._touch_travel = max(
                 self._touch_travel,
                 math.hypot(pos[0] - self._touch_origin[0], pos[1] - self._touch_origin[1]),
@@ -160,8 +177,10 @@ class Mapper:
             self._touching = False
             quick = self._touch_time * 1000 <= self.profile.tap_ms
             still = self._touch_travel <= self.profile.tap_travel
-            if self.profile.tap and quick and still:
-                self._pulses.append(self.profile.tap)
+            target = self.profile.two_finger_tap if self._max_fingers >= 2 else self.profile.tap
+            if target and quick and still:
+                self._pulses.append(target)
+        self._last_fingers = fingers
 
     # ------------------------------------------------------------------ saídas
 

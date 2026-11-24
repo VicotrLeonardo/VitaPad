@@ -17,8 +17,8 @@ start    = "key:ENTER"
 select   = "key:ESC"
 l        = "key:LEFTALT+LEFT"      # voltar (navegador/arquivos)
 r        = "key:LEFTALT+RIGHT"     # avançar
-rear_left  = "key:VOLUMEDOWN"
-rear_right = "key:VOLUMEUP"
+rear_left  = "none"            # desativado: fácil de esbarrar sem querer
+rear_right = "none"
 
 [sticks]
 left  = "mouse"
@@ -30,6 +30,6 @@ front = "touchpad"
 sensitivity = 0.8
 tap = "mouse:LEFT"
 
-[mouse]
+[cursor]
 stick_speed = 1400     # pixels/s com o analógico no máximo
 scroll_speed = 12      # cliques de rolagem/s no máximo

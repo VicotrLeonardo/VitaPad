@@ -16,7 +16,7 @@ uint32 buttons | uint8 lx, ly, rx, ry | uint16 tx, ty | uint8 click   (13 bytes 
 click: 0x01 = toque frontal (mover mouse), 0x08 = clique esquerdo, 0x10 = clique direito (toque traseiro)
 ```
 
-**Bug do servidor original:** depois que o PC desconecta, o loop interno de `server_thread` nunca termina (não checa o retorno de `sceNetRecv`/`sceNetSend`), então o Vita nunca volta a chamar `accept()`. Para reconectar é preciso reabrir o app. Além disso, `sceNetRecv(client, unused, 256, 0)` escreve até 256 bytes num buffer de 8 (estouro de pilha). Os dois problemas serão corrigidos na Fase 2.
+**Bug do servidor original:** depois que o PC desconecta, o loop interno de `server_thread` nunca termina (não checa o retorno de `sceNetRecv`/`sceNetSend`), então o Vita nunca volta a chamar `accept()`. Para reconectar é preciso reabrir o app. Além disso, `sceNetRecv(client, unused, 256, 0)` escreve até 256 bytes num buffer de 8 (estouro de pilha). Os dois problemas foram corrigidos no servidor novo (Fase 2).
 
 ## 2. Arquitetura proposta
 
@@ -50,7 +50,7 @@ Troca de modo: o botão PS é do sistema e não pode ser capturado. Proposta: **
 |---|---|---|
 | **0. Preparação** | VitaSDK instalado, Vita com HENkaku/Enso + VitaShell, IP do Vita conhecido | — |
 | **1. Cliente Python compatível com o VitaPad original** ✅ | `linux-client/` em Python que fala o protocolo antigo e cria gamepad + mouse via uinput. Testável já com o VPK oficial. Valida a parte Linux sozinha. | Não |
-| **2. Protocolo v2 + app Vita com 3 modos** | Fork do servidor: UDP push, TCP de eventos, UI com abas Gamepad/Teclado/Mouse | Sim |
+| **2. Protocolo v2 + app Vita com 3 modos** ✅ | Fork do servidor: UDP push, TCP de eventos, UI com abas Gamepad/Teclado/Mouse | Sim |
 | **3. Teclado visual** | Layout desenhado com vita2d, toque → tecla, Shift/Caps, feedback visual | Sim |
 | **4. Mapeamento flexível** | Perfil TOML por modo: botão do Vita → tecla / botão de mouse / botão de gamepad; recarregar sem reiniciar | Não |
 | **5. Documentação** | README: compilar VPK, instalar, regra udev, rodar cliente, systemd user service | — |
@@ -64,7 +64,7 @@ Troca de modo: o botão PS é do sistema e não pode ser capturado. Proposta: **
   KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
   ```
   + `sudo usermod -aG input $USER` e relogar.
-- **VitaSDK não instalado** (necessário a partir da Fase 2).
+- VitaSDK instalada em `~/vitasdk` (via vdpm, GCC 15.2).
 - PC na rede `192.168.18.0/24` (Wi-Fi `wlp4s0`, IP 192.168.18.58). IP do Vita ainda não identificado.
 
 - Vita: desbloqueado com **Enso + VitaShell** (instala VPK).
@@ -77,9 +77,17 @@ Fork: https://github.com/VicotrLeonardo/VitaPad (`origin`), com o original como 
 ```
 CUSTOM PS VITA/VitaPad/
 ├── PLANO.md
-├── Server/          # app do Vita (será modificado na Fase 2)
+├── Server/          # app do Vita: Vita Remote (C + vita2d)
 ├── Client/          # cliente C++ original (Windows/X11), mantido como referência
 └── linux-client/    # cliente Python novo (uinput)
 ```
 
 **Licença:** o VitaPad original **não tem arquivo de licença**, o que juridicamente significa "todos os direitos reservados". Antes de divulgar o projeto, vale abrir uma issue pedindo ao autor que adicione uma licença. Outra saída é manter o código novo (`linux-client/`) separado sob uma licença própria.
+
+## 6. Estado atual (24/11/2026)
+
+- **Fase 1 ✅** cliente Python, testado com o VitaPad original no Vita real.
+- **Fase 2 ✅** app **Vita Remote** (`Server/`, TITLE_ID `VREM00001`, instala ao lado do VitaPad) com abas GAMEPAD/MOUSE/TECLADO e SELECT+START. Protocolo v2 em `Server/source/protocol.h`: TCP 5001, descoberta UDP 5002, estado UDP 5003. Testado no Vita real: descoberta automática, 115 pacotes/s, 0 perdidos.
+- **Próximo: Fase 3**, o teclado visual ABNT2 na aba TECLADO. O app envia `VR_MSG_KEY` com códigos KEY_* do Linux, e o cliente já repassa essas mensagens ao teclado virtual. Também vou desenhar △ e □ como formas, porque a fonte PGF não tem esses símbolos.
+
+Compilar o VPK: `export VITASDK=~/vitasdk PATH=~/vitasdk/bin:$PATH && make -C Server`.

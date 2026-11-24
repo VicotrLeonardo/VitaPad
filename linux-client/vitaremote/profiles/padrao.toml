@@ -1,0 +1,90 @@
+# Perfil padrão do Vita Remote (app novo, protocolo v2).
+# Cada seção vale para um modo do Vita: troque o modo pelas abas do app ou SELECT+START.
+# Formato dos alvos: veja o README (pad:A, key:ENTER, key:LEFTCTRL+C, mouse:LEFT, none).
+
+name = "Padrão (gamepad / mouse / teclado)"
+
+# ---------------------------------------------------------------- GAMEPAD
+[gamepad.buttons]
+cross    = "pad:A"
+circle   = "pad:B"
+square   = "pad:X"
+triangle = "pad:Y"
+l        = "pad:LB"
+r        = "pad:RB"
+select   = "pad:BACK"
+start    = "pad:START"
+up       = "pad:HAT_UP"
+down     = "pad:HAT_DOWN"
+left     = "pad:HAT_LEFT"
+right    = "pad:HAT_RIGHT"
+rear_left  = "pad:LT"
+rear_right = "pad:RT"
+
+[gamepad.sticks]
+left  = "pad:left"
+right = "pad:right"
+deadzone = 0.12
+
+[gamepad.touch]
+front = "touchpad"
+sensitivity = 0.6
+tap = "mouse:LEFT"
+
+# ---------------------------------------------------------------- MOUSE
+[mouse.buttons]
+cross    = "mouse:LEFT"
+circle   = "mouse:RIGHT"
+square   = "mouse:MIDDLE"
+triangle = "key:LEFTMETA"          # visão de atividades do GNOME
+up       = "key:UP"
+down     = "key:DOWN"
+left     = "key:LEFT"
+right    = "key:RIGHT"
+start    = "key:ENTER"
+select   = "key:ESC"
+l        = "key:LEFTALT+LEFT"      # voltar
+r        = "key:LEFTALT+RIGHT"     # avançar
+rear_left  = "none"            # desativado: fácil de esbarrar sem querer
+rear_right = "none"
+
+[mouse.sticks]
+left  = "mouse"
+right = "scroll"
+deadzone = 0.15
+
+[mouse.touch]
+front = "touchpad"
+sensitivity = 0.8
+tap = "mouse:LEFT"
+two_finger_scroll = true
+two_finger_tap = "mouse:RIGHT"
+scroll_sensitivity = 0.03
+
+[mouse.cursor]
+stick_speed = 1400
+scroll_speed = 12
+
+# ---------------------------------------------------------------- TECLADO
+# A tela é do teclado visual; aqui ficam só os botões físicos.
+[keyboard.buttons]
+cross    = "key:ENTER"
+circle   = "key:BACKSPACE"
+square   = "key:SPACE"
+triangle = "key:TAB"
+up       = "key:UP"
+down     = "key:DOWN"
+left     = "key:LEFT"
+right    = "key:RIGHT"
+l        = "key:LEFTCTRL+Z"        # desfazer
+r        = "key:LEFTCTRL+A"        # selecionar tudo
+start    = "key:ENTER"
+select   = "key:ESC"
+
+[keyboard.sticks]
+left  = "mouse"
+right = "scroll"
+deadzone = 0.15
+
+[keyboard.cursor]
+stick_speed = 900

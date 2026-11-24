@@ -134,14 +134,14 @@ class MapperTest(unittest.TestCase):
         self.assertEqual(rec.take(), [("btn", "key", ecodes.KEY_W, True)])
 
     def test_stick_as_mouse_moves_cursor(self):
-        m, rec = make({"sticks": {"left": "mouse"}, "mouse": {"stick_speed": 1200}})
+        m, rec = make({"sticks": {"left": "mouse"}, "cursor": {"stick_speed": 1200}})
         for _ in range(12):
             m.update(VitaState(lx=255, ly=128), DT)
         dx = sum(e[1] for e in rec.take() if e[0] == "move")
         self.assertAlmostEqual(dx, 1200 * 12 * DT, delta=2)
 
     def test_stick_as_scroll_up_is_positive(self):
-        m, rec = make({"sticks": {"right": "scroll"}, "mouse": {"scroll_speed": 60}})
+        m, rec = make({"sticks": {"right": "scroll"}, "cursor": {"scroll_speed": 60}})
         for _ in range(10):
             m.update(VitaState(rx=128, ry=0), DT)
         self.assertGreater(sum(e[1] for e in rec.take() if e[0] == "scroll"), 0)

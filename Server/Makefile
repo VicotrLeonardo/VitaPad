@@ -1,5 +1,6 @@
-TARGET		:= VitaPad
-TITLE		:= VPAD00001
+TARGET		:= VitaRemote
+APP_NAME	:= Vita Remote
+TITLE		:= VREM00001
 SOURCES		:= source
 INCLUDES	:= include
 
@@ -16,7 +17,7 @@ OBJS     := $(addsuffix .o,$(BINFILES)) $(CFILES:.c=.o) $(CPPFILES:.cpp=.o)
 PREFIX  = arm-vita-eabi
 CC      = $(PREFIX)-gcc
 CXX      = $(PREFIX)-g++
-CFLAGS  = -Wl,-q -O3 -Wall
+CFLAGS  = -Wl,-q -O2 -Wall -Wextra -Wno-unused-parameter
 CXXFLAGS  = $(CFLAGS) -fno-exceptions -std=gnu++11
 ASFLAGS = $(CFLAGS)
 
@@ -24,7 +25,7 @@ all: $(TARGET).vpk
 
 $(TARGET).vpk: $(TARGET).velf
 	vita-make-fself -s -c $< ./build/eboot.bin
-	vita-mksfoex -s TITLE_ID=$(TITLE) "$(TARGET)" param.sfo
+	vita-mksfoex -s TITLE_ID=$(TITLE) "$(APP_NAME)" param.sfo
 	cp -f param.sfo ./build/sce_sys/param.sfo
 	vita-pack-vpk -s ./build/sce_sys/param.sfo -b ./build/eboot.bin \
 				  --add ./build/sce_sys/icon0.png=sce_sys/icon0.png \
@@ -41,4 +42,4 @@ $(TARGET).elf: $(OBJS)
 	$(CXX) $(CXXFLAGS) $^ $(LIBS) -o $@
 
 clean:
-	@rm -rf $(TARGET).velf $(TARGET).elf $(OBJS)
+	@rm -rf $(TARGET).velf $(TARGET).elf $(TARGET).vpk param.sfo $(OBJS)
