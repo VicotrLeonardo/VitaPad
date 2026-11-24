@@ -1,0 +1,28 @@
+# Perfil "teclado-wasd": equivalente ao mapeamento padrão do VitaPad original,
+# para jogos/emuladores que só aceitam teclado.
+
+name = "Teclado (mapeamento clássico do VitaPad)"
+
+[buttons]
+up       = "key:W"
+left     = "key:A"
+down     = "key:S"
+right    = "key:D"
+triangle = "key:I"
+square   = "key:J"
+cross    = "key:K"
+circle   = "key:L"
+l        = "key:LEFTCTRL"
+r        = "key:SPACE"
+start    = "key:ENTER"
+select   = "key:LEFTSHIFT"
+rear_left  = "mouse:LEFT"
+rear_right = "mouse:RIGHT"
+
+[sticks]
+left  = "keys:UP,LEFT,DOWN,RIGHT"
+right = "keys:KP8,KP4,KP2,KP6"
+
+[touch]
+front = "touchpad"
+tap = "none"

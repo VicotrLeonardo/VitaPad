@@ -82,3 +82,9 @@ Client/VitaPad
 
 Client/VitaPad.exe
 Client/vJoyInterface.dll
+
+# cliente Linux (Python)
+__pycache__/
+*.egg-info/
+build/lib/
+.venv/

@@ -1,0 +1,35 @@
+# Perfil "desktop": controlar o PC no sofá.
+# Analógico esquerdo = mouse, direito = rolagem, tela = touchpad,
+# botões = cliques e atalhos de teclado.
+
+name = "Desktop (mouse + atalhos)"
+
+[buttons]
+cross    = "mouse:LEFT"
+circle   = "mouse:RIGHT"
+square   = "mouse:MIDDLE"
+triangle = "key:LEFTMETA"          # abre a visão de atividades no GNOME
+up       = "key:UP"
+down     = "key:DOWN"
+left     = "key:LEFT"
+right    = "key:RIGHT"
+start    = "key:ENTER"
+select   = "key:ESC"
+l        = "key:LEFTALT+LEFT"      # voltar (navegador/arquivos)
+r        = "key:LEFTALT+RIGHT"     # avançar
+rear_left  = "key:VOLUMEDOWN"
+rear_right = "key:VOLUMEUP"
+
+[sticks]
+left  = "mouse"
+right = "scroll"
+deadzone = 0.15
+
+[touch]
+front = "touchpad"
+sensitivity = 0.8
+tap = "mouse:LEFT"
+
+[mouse]
+stick_speed = 1400     # pixels/s com o analógico no máximo
+scroll_speed = 12      # cliques de rolagem/s no máximo

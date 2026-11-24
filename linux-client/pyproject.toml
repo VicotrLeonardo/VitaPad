@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vita-remote"
+dynamic = ["version"]
+description = "Use o PS Vita como gamepad, teclado e mouse no Linux (uinput)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["evdev>=1.4"]
+
+[project.scripts]
+vita-remote = "vitaremote.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "vitaremote.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["vitaremote*"]
+
+[tool.setuptools.package-data]
+vitaremote = ["profiles/*.toml"]

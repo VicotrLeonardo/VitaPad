@@ -1,0 +1,36 @@
+# Perfil "gamepad": o Vita vira um controle estilo Xbox 360.
+# A tela frontal funciona como touchpad (toque rápido = clique esquerdo)
+# e o toque traseiro (metade esquerda/direita) vira os gatilhos LT/RT.
+
+name = "Gamepad (Xbox 360) + touchpad"
+
+[buttons]
+cross    = "pad:A"
+circle   = "pad:B"
+square   = "pad:X"
+triangle = "pad:Y"
+l        = "pad:LB"
+r        = "pad:RB"
+select   = "pad:BACK"
+start    = "pad:START"
+up       = "pad:HAT_UP"
+down     = "pad:HAT_DOWN"
+left     = "pad:HAT_LEFT"
+right    = "pad:HAT_RIGHT"
+# Só existem no PS TV / controles externos; inofensivos no Vita.
+l3       = "pad:LS"
+r3       = "pad:RS"
+rear_left  = "pad:LT"
+rear_right = "pad:RT"
+
+[sticks]
+left  = "pad:left"
+right = "pad:right"
+deadzone = 0.12        # 0..0.9: ignora pequenas variações perto do centro
+
+[touch]
+front = "touchpad"     # "touchpad" ou "none"
+sensitivity = 0.6      # pixels do PC por unidade de toque do Vita
+tap = "mouse:LEFT"     # toque rápido na tela = clique
+tap_ms = 180
+tap_travel = 40
