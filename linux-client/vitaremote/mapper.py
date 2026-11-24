@@ -143,6 +143,16 @@ class Mapper:
     def _touch(self, state: VitaState, dt: float, mouse: list[float], wheel: list[float]) -> None:
         pos = (state.touch_x, state.touch_y)
         fingers = state.finger_count
+        if state.scroll_zone and fingers:
+            # Faixa de rolagem do Vita: só rola (mesmo sentido do arrasto com 2 dedos),
+            # nunca move o cursor nem vira clique.
+            if self._touching and fingers == self._last_fingers:
+                wheel[0] += (pos[1] - self._last_touch[1]) * self.profile.touch_scroll_sensitivity
+            self._touching = True
+            self._touch_travel = float("inf")  # impede o "toque rápido" de virar clique
+            self._last_touch = pos
+            self._last_fingers = fingers
+            return
         if fingers:
             if not self._touching:
                 self._touching = True

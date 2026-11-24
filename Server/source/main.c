@@ -4,127 +4,35 @@
  *
  * Troca de modo: toque nas abas do topo ou SELECT+START.
  */
-#include <stdio.h>
-#include <string.h>
-#include <vita2d.h>
 #include <psp2/ctrl.h>
 #include <psp2/touch.h>
 #include <psp2/kernel/processmgr.h>
 
+#include "keyboard.h"
 #include "net.h"
 #include "protocol.h"
+#include "screens.h"
+#include "ui.h"
 
-#define SCREEN_W 960
-#define SCREEN_H 544
-#define STATUS_H 40
-#define TAB_W    (SCREEN_W / VR_MODE_COUNT)
+_Static_assert(UI_TAB_BAR_H == HEADER_H, "net.h e ui.h precisam concordar na altura do cabeçalho");
 
-#define COLOR_BG        RGBA8(0x12, 0x14, 0x1A, 0xFF)
-#define COLOR_PANEL     RGBA8(0x1E, 0x22, 0x2B, 0xFF)
-#define COLOR_ACCENT    RGBA8(0x3D, 0x8B, 0xFF, 0xFF)
-#define COLOR_TEXT      RGBA8(0xE8, 0xEA, 0xEE, 0xFF)
-#define COLOR_MUTED     RGBA8(0x8A, 0x90, 0x9C, 0xFF)
-#define COLOR_OK        RGBA8(0x4C, 0xC9, 0x6E, 0xFF)
-#define COLOR_WAIT      RGBA8(0xF2, 0xB8, 0x3C, 0xFF)
-#define COLOR_FINGER    RGBA8(0x3D, 0x8B, 0xFF, 0xA0)
-
-#define VERSION_STR "Vita Remote v0.2"
-
-static const char *MODE_NAMES[VR_MODE_COUNT] = { "GAMEPAD", "MOUSE", "TECLADO" };
-static vita2d_pgf *font;
-
-static void text(int x, int y, uint32_t color, float scale, const char *s) {
-	vita2d_pgf_draw_text(font, x, y, color, scale, s);
-}
-
-static void text_centered(int cx, int y, uint32_t color, float scale, const char *s) {
-	int w = vita2d_pgf_text_width(font, scale, s);
-	text(cx - w / 2, y, color, scale, s);
-}
-
-static void rect_outline(int x, int y, int w, int h, uint32_t color) {
-	vita2d_draw_line(x, y, x + w, y, color);
-	vita2d_draw_line(x + w, y, x + w, y + h, color);
-	vita2d_draw_line(x + w, y + h, x, y + h, color);
-	vita2d_draw_line(x, y + h, x, y, color);
-}
-
-static void draw_tabs(int mode) {
-	for (int i = 0; i < VR_MODE_COUNT; i++) {
-		int x = i * TAB_W;
-		int active = (i == mode);
-		vita2d_draw_rectangle(x, 0, TAB_W, UI_TAB_BAR_H, active ? COLOR_ACCENT : COLOR_PANEL);
-		if (i > 0)
-			vita2d_draw_line(x, 0, x, UI_TAB_BAR_H, COLOR_BG);
-		text_centered(x + TAB_W / 2, 42, active ? COLOR_TEXT : COLOR_MUTED, 1.2f, MODE_NAMES[i]);
+/* Algum dedo na tela é novo neste quadro? (compara os ids com o quadro anterior) */
+static int touching_started_now(const SceTouchData *front) {
+	static uint8_t prev_ids[8];
+	static unsigned prev_n = 0;
+	int started = 0;
+	for (unsigned i = 0; i < front->reportNum; i++) {
+		int seen = 0;
+		for (unsigned j = 0; j < prev_n; j++)
+			if (prev_ids[j] == front->report[i].id)
+				seen = 1;
+		if (!seen)
+			started = 1;
 	}
-}
-
-/* Mostra a posição de um analógico (0..255) num círculo. */
-static void draw_stick(int cx, int cy, uint8_t sx, uint8_t sy, const char *label) {
-	vita2d_draw_fill_circle(cx, cy, 60, COLOR_PANEL);
-	vita2d_draw_fill_circle(cx + (sx - 128) * 50 / 128, cy + (sy - 128) * 50 / 128, 14, COLOR_ACCENT);
-	text_centered(cx, cy + 90, COLOR_MUTED, 1.0f, label);
-}
-
-static void draw_button_dot(int x, int y, const char *label, int on) {
-	vita2d_draw_fill_circle(x, y, 22, on ? COLOR_ACCENT : COLOR_PANEL);
-	text_centered(x, y + 8, COLOR_TEXT, 0.9f, label);
-}
-
-static void draw_gamepad(const SceCtrlData *pad) {
-	int top = UI_TAB_BAR_H;
-	text(30, top + 50, COLOR_TEXT, 1.0f, "Botoes e analogicos viram um controle (layout Xbox) no PC.");
-	text(30, top + 78, COLOR_MUTED, 0.9f, "Tela: touchpad   |   Toque traseiro esquerdo/direito: LT/RT");
-
-	draw_stick(200, top + 220, pad->lx, pad->ly, "L");
-	draw_stick(760, top + 220, pad->rx, pad->ry, "R");
-
-	uint32_t b = pad->buttons;
-	int cx = 480, cy = top + 220;
-	draw_button_dot(cx, cy - 60, "/\\", b & SCE_CTRL_TRIANGLE);
-	draw_button_dot(cx - 60, cy, "[]", b & SCE_CTRL_SQUARE);
-	draw_button_dot(cx + 60, cy, "O", b & SCE_CTRL_CIRCLE);
-	draw_button_dot(cx, cy + 60, "X", b & SCE_CTRL_CROSS);
-	draw_button_dot(cx - 150, top + 120, "L", b & SCE_CTRL_LTRIGGER);
-	draw_button_dot(cx + 150, top + 120, "R", b & SCE_CTRL_RTRIGGER);
-}
-
-static void draw_mouse(const SceTouchData *touch) {
-	int top = UI_TAB_BAR_H + 10;
-	int h = SCREEN_H - STATUS_H - top - 10;
-	rect_outline(20, top, SCREEN_W - 40, h, COLOR_MUTED);
-	text_centered(SCREEN_W / 2, top + h / 2 - 20, COLOR_MUTED, 1.0f, "1 dedo: mover   |   toque rapido: clique");
-	text_centered(SCREEN_W / 2, top + h / 2 + 10, COLOR_MUTED, 1.0f, "2 dedos: rolar   |   toque com 2 dedos: clique direito");
-	text_centered(SCREEN_W / 2, top + h / 2 + 40, COLOR_MUTED, 0.9f, "X: clique   O: clique direito   Analogico direito: rolar");
-	for (unsigned i = 0; i < touch->reportNum; i++) {
-		int x = touch->report[i].x / 2, y = touch->report[i].y / 2;
-		if (y >= UI_TAB_BAR_H)
-			vita2d_draw_fill_circle(x, y, 26, COLOR_FINGER);
-	}
-}
-
-static void draw_keyboard(void) {
-	int top = UI_TAB_BAR_H;
-	text_centered(SCREEN_W / 2, top + 180, COLOR_TEXT, 1.3f, "Teclado visual");
-	text_centered(SCREEN_W / 2, top + 220, COLOR_MUTED, 1.0f, "Chega na Fase 3 (layout ABNT2).");
-	text_centered(SCREEN_W / 2, top + 250, COLOR_MUTED, 1.0f, "Os botoes fisicos seguem o perfil 'keyboard' do PC.");
-}
-
-static void draw_status(void) {
-	int y = SCREEN_H - STATUS_H;
-	vita2d_draw_rectangle(0, y, SCREEN_W, STATUS_H, COLOR_PANEL);
-	char buf[96];
-	snprintf(buf, sizeof(buf), "Vita: %s", net_local_ip());
-	text(16, y + 27, COLOR_MUTED, 1.0f, buf);
-	if (net_connected()) {
-		snprintf(buf, sizeof(buf), "Conectado: %s", net_peer_ip());
-		text_centered(SCREEN_W / 2, y + 27, COLOR_OK, 1.0f, buf);
-	} else {
-		text_centered(SCREEN_W / 2, y + 27, COLOR_WAIT, 1.0f, "Aguardando o PC...");
-	}
-	const char *hint = "SELECT+START: modo";
-	text(SCREEN_W - 16 - vita2d_pgf_text_width(font, 0.9f, hint), y + 27, COLOR_MUTED, 0.9f, hint);
+	prev_n = front->reportNum < 8 ? front->reportNum : 8;
+	for (unsigned i = 0; i < prev_n; i++)
+		prev_ids[i] = front->report[i].id;
+	return started;
 }
 
 int main(void) {
@@ -132,31 +40,35 @@ int main(void) {
 	sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
 	sceTouchSetSamplingState(SCE_TOUCH_PORT_BACK, SCE_TOUCH_SAMPLING_STATE_START);
 
-	vita2d_init();
-	vita2d_set_clear_color(COLOR_BG);
-	font = vita2d_load_default_pgf();
-
+	vita2d_init_advanced(4 * 1024 * 1024); /* memória de desenho por quadro */
+	vita2d_set_clear_color(C_BG);
+	ui_init();
+	kb_init();
 	net_start();
 
 	const uint32_t combo = SCE_CTRL_SELECT | SCE_CTRL_START;
 	int was_touching = 0;
 	int combo_latched = 0;
+	int last_mode = net_get_mode();
+	int was_connected = 0;
+	int scroll_id = -1; /* id do dedo que começou na faixa de rolagem (-1 = nenhum) */
 
 	for (;;) {
-		/* Sem isso o Vita entra em suspensão enquanto você joga só pelo PC. */
+		/* Sem isso o Vita entra em suspensão enquanto você usa só o PC. */
 		sceKernelPowerTick(SCE_KERNEL_POWER_TICK_DISABLE_AUTO_SUSPEND);
 
 		SceCtrlData pad;
-		SceTouchData touch;
+		SceTouchData front, rear;
 		sceCtrlPeekBufferPositive(0, &pad, 1);
-		sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
+		sceTouchPeek(SCE_TOUCH_PORT_FRONT, &front, 1);
+		sceTouchPeek(SCE_TOUCH_PORT_BACK, &rear, 1);
 
 		/* Toque numa aba troca o modo (só no início do toque). */
-		int touching = touch.reportNum > 0;
+		int touching = front.reportNum > 0;
 		if (touching && !was_touching) {
-			int x = touch.report[0].x / 2, y = touch.report[0].y / 2;
-			if (y < UI_TAB_BAR_H)
-				net_set_mode(x / TAB_W);
+			int tab = screens_tab_at(front.report[0].x / 2, front.report[0].y / 2);
+			if (tab >= 0)
+				net_set_mode(tab);
 		}
 		was_touching = touching;
 
@@ -165,7 +77,7 @@ int main(void) {
 			net_set_suppressed_buttons(combo);
 			if (!combo_latched) {
 				combo_latched = 1;
-				net_set_mode((net_get_mode() + 1) % VR_MODE_COUNT);
+				net_set_mode(screens_next_mode(net_get_mode()));
 			}
 		} else if (!(pad.buttons & combo)) {
 			combo_latched = 0;
@@ -173,17 +85,40 @@ int main(void) {
 		}
 
 		int mode = net_get_mode();
+		int connected = net_connected();
+		/* Saiu do teclado ou o PC caiu: solta modificadores travados e teclas seguras. */
+		if ((last_mode == VR_MODE_KEYBOARD && mode != VR_MODE_KEYBOARD) || (was_connected && !connected))
+			kb_reset();
+		last_mode = mode;
+		was_connected = connected;
+		if (mode == VR_MODE_KEYBOARD)
+			kb_update(&front, &pad);
+
+		/* Faixa de rolagem: o dedo que *começa* nela só rola até ser levantado. */
+		int new_touch = touching_started_now(&front); /* roda todo quadro: guarda os ids */
+		int still_down = 0;
+		for (unsigned i = 0; i < front.reportNum; i++)
+			if (front.report[i].id == scroll_id)
+				still_down = 1;
+		if (!still_down)
+			scroll_id = -1;
+		if (mode == VR_MODE_MOUSE && scroll_id < 0 && front.reportNum == 1 && new_touch)
+			if (screens_in_scroll_zone(front.report[0].x / 2, front.report[0].y / 2))
+				scroll_id = front.report[0].id;
+		if (mode != VR_MODE_MOUSE)
+			scroll_id = -1;
+		net_set_state_flags(scroll_id >= 0 ? VR_FLAG_SCROLL_ZONE : 0);
+
 		vita2d_start_drawing();
 		vita2d_clear_screen();
-		draw_tabs(mode);
 		if (mode == VR_MODE_GAMEPAD)
-			draw_gamepad(&pad);
+			screens_draw_gamepad(&pad, &rear);
 		else if (mode == VR_MODE_MOUSE)
-			draw_mouse(&touch);
+			screens_draw_mouse(&front, scroll_id >= 0);
 		else
-			draw_keyboard();
-		draw_status();
-		text(SCREEN_W - 16 - vita2d_pgf_text_width(font, 0.7f, VERSION_STR), UI_TAB_BAR_H + 22, COLOR_MUTED, 0.7f, VERSION_STR);
+			kb_draw();
+		screens_draw_header(mode);
+		screens_draw_footer(mode);
 		vita2d_end_drawing();
 		vita2d_wait_rendering_done();
 		vita2d_swap_buffers();

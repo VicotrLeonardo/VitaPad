@@ -66,21 +66,9 @@ stick_speed = 1400
 scroll_speed = 12
 
 # ---------------------------------------------------------------- TECLADO
-# A tela é do teclado visual; aqui ficam só os botões físicos.
-[keyboard.buttons]
-cross    = "key:ENTER"
-circle   = "key:BACKSPACE"
-square   = "key:SPACE"
-triangle = "key:TAB"
-up       = "key:UP"
-down     = "key:DOWN"
-left     = "key:LEFT"
-right    = "key:RIGHT"
-l        = "key:LEFTCTRL+Z"        # desfazer
-r        = "key:LEFTCTRL+A"        # selecionar tudo
-start    = "key:ENTER"
-select   = "key:ESC"
-
+# No modo teclado os botões físicos são tratados pelo próprio Vita (D-pad navega no
+# teclado visual, ✕ aperta a tecla, ○ apaga, □ espaço, △ Shift, START Enter) e não
+# chegam aqui. Os analógicos continuam valendo:
 [keyboard.sticks]
 left  = "mouse"
 right = "scroll"

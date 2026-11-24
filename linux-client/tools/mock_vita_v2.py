@@ -43,6 +43,8 @@ def scripted(t: float) -> VitaState:
         kw = {"mode": p.MODE_MOUSE}
         if t < 4:  # 1 dedo arrastando
             kw["front_points"] = ((round(400 + (t - 3) * 800), 500),)
+        elif 4.05 <= t < 4.2:  # 1 dedo na faixa de rolagem do meio
+            kw.update(front_points=((960, round(300 + (t - 4.05) * 2000)),), scroll_zone=True)
         elif 4.2 <= t < 5:  # 2 dedos descendo = rolar
             y = round(300 + (t - 4.2) * 600)
             kw["front_points"] = ((800, y), (1000, y))

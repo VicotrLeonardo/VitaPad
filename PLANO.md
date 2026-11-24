@@ -88,6 +88,6 @@ CUSTOM PS VITA/VitaPad/
 
 - **Fase 1 ✅** cliente Python, testado com o VitaPad original no Vita real.
 - **Fase 2 ✅** app **Vita Remote** (`Server/`, TITLE_ID `VREM00001`, instala ao lado do VitaPad) com abas GAMEPAD/MOUSE/TECLADO e SELECT+START. Protocolo v2 em `Server/source/protocol.h`: TCP 5001, descoberta UDP 5002, estado UDP 5003. Testado no Vita real: descoberta automática, 115 pacotes/s, 0 perdidos.
-- **Próximo: Fase 3**, o teclado visual ABNT2 na aba TECLADO. O app envia `VR_MSG_KEY` com códigos KEY_* do Linux, e o cliente já repassa essas mensagens ao teclado virtual. Também vou desenhar △ e □ como formas, porque a fonte PGF não tem esses símbolos.
+- **Fase 3 ✅** interface redesenhada (v0.3+): fonte do sistema, símbolos desenhados, abas Mouse/Teclado/Gamepad (abre no Mouse), faixa de rolagem no meio da aba Mouse e teclado ABNT2 com teclas mortas, modificadores de 1 ou 2 toques, navegação pelo D-pad e prévia local. Protocolo **v3** (campo `flags` no estado). Atalho no PC: `linux-client/install-desktop.sh`.
 
 Compilar o VPK: `export VITASDK=~/vitasdk PATH=~/vitasdk/bin:$PATH && make -C Server`.

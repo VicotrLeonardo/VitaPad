@@ -1,8 +1,8 @@
 #pragma once
 #include <stdint.h>
 
-/* Altura da barra de abas, em pixels de tela (960x544). Toques nela não vão para o PC. */
-#define UI_TAB_BAR_H 64
+/* Altura do cabeçalho (= HEADER_H em ui.h), em pixels de tela. Toques nele não vão para o PC. */
+#define UI_TAB_BAR_H 60
 
 /* Inicializa a rede e inicia as threads de controle (TCP), estado (UDP) e descoberta. */
 int net_start(void);
@@ -14,6 +14,9 @@ unsigned net_packets_sent(void);
 
 int  net_get_mode(void);
 void net_set_mode(int mode);      /* troca o modo e avisa o PC */
+
+/* Marcas do pacote de estado (VR_FLAG_*), definidas pela interface. */
+void net_set_state_flags(uint8_t flags);
 
 /* Botões que não devem ser enviados (ex.: SELECT+START enquanto trocam de modo). */
 void net_set_suppressed_buttons(uint32_t mask);

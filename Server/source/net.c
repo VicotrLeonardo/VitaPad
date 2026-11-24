@@ -24,7 +24,8 @@
 #define THREAD_STACK       0x10000
 
 static volatile int g_connected = 0;
-static volatile int g_mode = VR_MODE_GAMEPAD;
+static volatile int g_mode = VR_MODE_MOUSE;
+static volatile uint8_t g_flags = 0;
 static volatile int g_hz = 120;
 static volatile uint32_t g_suppressed = 0;
 static volatile unsigned g_sent = 0;
@@ -40,6 +41,7 @@ int net_connected(void) { return g_connected; }
 unsigned net_packets_sent(void) { return g_sent; }
 int net_get_mode(void) { return g_mode; }
 void net_set_suppressed_buttons(uint32_t mask) { g_suppressed = mask; }
+void net_set_state_flags(uint8_t flags) { g_flags = flags; }
 
 /* ------------------------------------------------------------------ TCP */
 
@@ -211,7 +213,9 @@ static int state_thread(SceSize args, void *argp) {
 		pkt.type = VR_UDP_STATE;
 		pkt.mode = (uint8_t)mode;
 		pkt.seq = seq++;
-		pkt.buttons = pad.buttons & ~g_suppressed;
+		/* No modo teclado os botões são tratados no Vita (navegação no teclado visual). */
+		pkt.buttons = mode == VR_MODE_KEYBOARD ? 0 : (pad.buttons & ~g_suppressed);
+		pkt.flags = g_flags;
 		pkt.lx = pad.lx;
 		pkt.ly = pad.ly;
 		pkt.rx = pad.rx;

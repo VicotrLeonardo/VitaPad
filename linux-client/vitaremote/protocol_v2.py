@@ -1,8 +1,8 @@
-"""Protocolo v2 do Vita Remote. Espelho de Server/source/protocol.h: mudou lá, mude aqui.
+"""Protocolo do Vita Remote (v3 = v2 + campo flags no estado). Espelho de Server/source/protocol.h: mudou lá, mude aqui.
 
   Descoberta  UDP broadcast  Vita -> :5002   Beacon, 1x/s enquanto ninguém conectou
   Controle    TCP 5001       mensagens [u8 tipo][u8 tamanho][payload]
-  Estado      UDP            Vita -> PC (porta enviada no HELLO), 30 bytes, `hz` vezes/s
+  Estado      UDP            Vita -> PC (porta enviada no HELLO), 31 bytes, `hz` vezes/s
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from .protocol_v1 import TOUCH_W, VitaState
 
 MAGIC = b"VRMT"
-VERSION = 2
+VERSION = 3
 TCP_PORT = 5001
 DISCOVERY_PORT = 5002
 VITA_UDP_PORT = 5003
@@ -36,8 +36,9 @@ _HELLO = struct.Struct("<4sBBH")
 _WELCOME = struct.Struct("<4sBB")
 _KEY = struct.Struct("<HB")
 _BEACON = struct.Struct("<4sBH")
-_STATE = struct.Struct("<BBHI4BBB8H")
-STATE_SIZE = _STATE.size  # 30
+_STATE = struct.Struct("<BBHI4BBBB8H")
+STATE_SIZE = _STATE.size  # 31
+FLAG_SCROLL_ZONE = 0x01  # o dedo começou na faixa de rolagem do Vita: só rolar
 UDP_STATE = 1
 MAX_POINTS = 2
 
@@ -114,7 +115,7 @@ def parse_state(data: bytes) -> tuple[int, VitaState]:
     """Devolve (seq, estado). Lança ProtocolError se o pacote não for de estado."""
     if len(data) != STATE_SIZE or data[0] != UDP_STATE:
         raise ProtocolError("pacote UDP desconhecido")
-    (_, mode, seq, buttons, lx, ly, rx, ry, nf, nr, *coords) = _STATE.unpack(data)
+    (_, mode, seq, buttons, lx, ly, rx, ry, nf, nr, flags, *coords) = _STATE.unpack(data)
     front = tuple((coords[2 * i], coords[2 * i + 1]) for i in range(min(nf, MAX_POINTS)))
     rear = [(coords[4 + 2 * i], coords[5 + 2 * i]) for i in range(min(nr, MAX_POINTS))]
     first = front[0] if front else (0, 0)
@@ -123,7 +124,7 @@ def parse_state(data: bytes) -> tuple[int, VitaState]:
         touch_x=first[0], touch_y=first[1], front_touch=bool(front),
         rear_left=any(x < TOUCH_W // 2 for x, _ in rear),
         rear_right=any(x >= TOUCH_W // 2 for x, _ in rear),
-        front_points=front, mode=mode,
+        front_points=front, mode=mode, scroll_zone=bool(flags & FLAG_SCROLL_ZONE),
     )
     return seq, state
 
@@ -137,8 +138,9 @@ def pack_state(seq: int, state: VitaState, rear: tuple[tuple[int, int], ...] = (
         padded = pts + [(0, 0)] * (MAX_POINTS - len(pts))
         for x, y in padded:
             coords += [x, y]
+    flags = FLAG_SCROLL_ZONE if state.scroll_zone else 0
     return _STATE.pack(UDP_STATE, state.mode, seq & 0xFFFF, state.buttons,
-                       state.lx, state.ly, state.rx, state.ry, len(front), len(rear_l), *coords)
+                       state.lx, state.ly, state.rx, state.ry, len(front), len(rear_l), flags, *coords)
 
 
 def is_newer(seq: int, last: int | None) -> bool:

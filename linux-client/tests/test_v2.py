@@ -22,7 +22,7 @@ import mock_vita_v2  # noqa: E402
 
 class ProtocolV2Test(unittest.TestCase):
     def test_sizes_match_c_header(self):
-        self.assertEqual(p.STATE_SIZE, 30)
+        self.assertEqual(p.STATE_SIZE, 31)
         self.assertEqual(len(p.hello(120, 40000)), 2 + 8)
         self.assertEqual(len(p.beacon()), 7)
 
@@ -35,6 +35,11 @@ class ProtocolV2Test(unittest.TestCase):
         self.assertEqual((got.touch_x, got.touch_y, got.finger_count), (100, 200, 2))
         self.assertTrue(got.rear_right and not got.rear_left)
         self.assertEqual(got.mode, p.MODE_MOUSE)
+
+    def test_scroll_zone_flag_roundtrip(self):
+        s = VitaState(front_touch=True, touch_x=960, touch_y=500, front_points=((960, 500),), scroll_zone=True)
+        self.assertTrue(p.parse_state(p.pack_state(1, s))[1].scroll_zone)
+        self.assertFalse(p.parse_state(p.pack_state(1, VitaState()))[1].scroll_zone)
 
     def test_frame_reader_handles_partial_and_joined_frames(self):
         data = p.frame(p.MSG_MODE, b"\x01") + p.frame(p.MSG_PONG) + p.frame(p.MSG_KEY, b"\x1e\x00\x01")
@@ -82,6 +87,32 @@ class TwoFingerTest(unittest.TestCase):
                            front_points=((1500, 500), (500, 500))), DT)
         m.update(VitaState(front_touch=True, touch_x=1500, touch_y=500, front_points=((1500, 500),)), DT)
         self.assertFalse([e for e in rec.take() if e[0] == "move"])
+
+
+class ScrollZoneTest(unittest.TestCase):
+    def zone(self, y):
+        return VitaState(front_touch=True, touch_x=960, touch_y=y, front_points=((960, y),), scroll_zone=True)
+
+    def test_scroll_zone_scrolls_and_never_moves_or_clicks(self):
+        m, rec = make({"touch": {"front": "touchpad", "tap": "mouse:LEFT", "scroll_sensitivity": 0.05}})
+        for y in range(300, 700, 20):
+            m.update(self.zone(y), DT)
+        m.update(VitaState(), DT)
+        m.update(VitaState(), DT)
+        ev = rec.take()
+        self.assertFalse([e for e in ev if e[0] in ("move", "btn")])
+        self.assertGreater(sum(e[1] for e in ev if e[0] == "scroll"), 0)
+
+    def test_quick_tap_in_scroll_zone_is_not_a_click(self):
+        m, rec = make({"touch": {"front": "touchpad", "tap": "mouse:LEFT"}})
+        m.update(self.zone(500), DT)
+        m.update(VitaState(), DT)
+        m.update(VitaState(), DT)
+        self.assertEqual(rec.take(), [])
+
+    def test_keyboard_mode_has_no_button_mappings(self):
+        # No modo teclado o Vita trata os botões; o PC não deve mapear nada para eles.
+        self.assertFalse(any(load_profile_set("padrao").for_mode("keyboard").buttons.values()))
 
 
 class ProfileSetTest(unittest.TestCase):
@@ -156,6 +187,7 @@ class IntegrationTest(unittest.TestCase):
 
         self.assertGreater(len(states), 300)
         self.assertEqual(modes[:3], [p.MODE_GAMEPAD, p.MODE_MOUSE, p.MODE_KEYBOARD])
+        self.assertTrue(any(s.scroll_zone for s in states))
         self.assertIn((ecodes.KEY_O, True), keys)
         self.assertEqual(disconnects, [1])
 

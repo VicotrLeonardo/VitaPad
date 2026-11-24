@@ -64,6 +64,35 @@ python3 -m vitaremote 192.168.18.40
 
 Troque o modo no Vita tocando nas abas do topo ou com **SELECT+START**. Se o PC desconectar, o app volta sozinho a esperar; é só rodar o cliente de novo.
 
+### Atalho na Área de Trabalho
+
+Para não precisar abrir o terminal:
+
+```bash
+./install-desktop.sh
+```
+
+Isso cria o ícone **Vita Remote** na Área de Trabalho e no menu de aplicativos. Ele abre uma janela de terminal com o cliente; para encerrar, feche a janela. Se você mover a pasta do projeto, rode o instalador de novo. Para remover os atalhos:
+
+```bash
+./install-desktop.sh --remove
+```
+
+O mesmo script que o atalho usa pode ser chamado direto, com as mesmas opções:
+
+```bash
+./vita-remote.sh -P desktop
+```
+
+### Depois de reiniciar o PC
+
+Nada fica rodando sozinho. A cada uso:
+
+1. Abra o **Vita Remote** no Vita.
+2. Clique no atalho **Vita Remote** do PC (ou rode `./vita-remote.sh`).
+
+A ordem não importa: o cliente espera o Vita aparecer, e o app do Vita espera o PC.
+
 Para usar o VitaPad original:
 
 ```bash

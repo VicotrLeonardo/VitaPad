@@ -77,6 +77,7 @@ class VitaState:
     # Protocolo v2: todos os dedos na tela frontal (até 2) e o modo ativo no Vita.
     front_points: tuple[tuple[int, int], ...] = ()
     mode: int = 0
+    scroll_zone: bool = False  # dedo na faixa de rolagem do Vita (protocolo v3)
 
     @property
     def finger_count(self) -> int:

@@ -1,5 +1,5 @@
 /*
- * Vita Remote - protocolo v2 (Vita <-> PC).
+ * Vita Remote - protocolo v3 (Vita <-> PC). v3 = v2 + campo `flags` no pacote de estado.
  * Espelhado em linux-client/vitaremote/protocol_v2.py. Mudou aqui, mude lá.
  *
  * Tudo em little-endian (Vita e x86 são little-endian).
@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 #define VR_MAGIC            "VRMT"
-#define VR_PROTOCOL_VERSION 2
+#define VR_PROTOCOL_VERSION 3
 #define VR_TCP_PORT         5001
 #define VR_DISCOVERY_PORT   5002
 #define VR_UDP_PORT         5003
@@ -75,9 +75,12 @@ typedef struct VR_PACKED {
 } VrPoint;
 
 #define VR_UDP_STATE 1
+
+/* VrStatePacket.flags */
+#define VR_FLAG_SCROLL_ZONE 0x01 /* o dedo na tela começou na faixa de rolagem: só rolar */
 #define VR_MAX_POINTS 2
 
-/* 30 bytes. Coordenadas de toque em unidades do painel (frontal 0..1919 x 0..1087). */
+/* 31 bytes. Coordenadas de toque em unidades do painel (frontal 0..1919 x 0..1087). */
 typedef struct VR_PACKED {
 	uint8_t  type;          /* VR_UDP_STATE */
 	uint8_t  mode;          /* VrMode atual */
@@ -86,6 +89,7 @@ typedef struct VR_PACKED {
 	uint8_t  lx, ly, rx, ry;
 	uint8_t  front_count;   /* dedos na tela frontal (0..2), fora da barra de abas */
 	uint8_t  rear_count;    /* dedos no painel traseiro (0..2) */
+	uint8_t  flags;         /* VR_FLAG_* */
 	VrPoint  front[VR_MAX_POINTS];
 	VrPoint  rear[VR_MAX_POINTS];
 } VrStatePacket;
@@ -99,5 +103,5 @@ typedef struct VR_PACKED {
 _Static_assert(sizeof(VrHello) == 8, "VrHello");
 _Static_assert(sizeof(VrWelcome) == 6, "VrWelcome");
 _Static_assert(sizeof(VrKey) == 3, "VrKey");
-_Static_assert(sizeof(VrStatePacket) == 30, "VrStatePacket");
+_Static_assert(sizeof(VrStatePacket) == 31, "VrStatePacket");
 _Static_assert(sizeof(VrBeacon) == 7, "VrBeacon");
